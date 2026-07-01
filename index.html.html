@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>🏆 Joey Quest — Pokédex Tracker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #e2e8f0;
+  }
+  #header {
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 20px 24px 16px;
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(12px);
+  }
+  #header-inner { max-width: 900px; margin: 0 auto; }
+  #title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  #title-row span { font-size: 26px; }
+  #title-main { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; color: #f1f5f9; }
+  #title-sub { font-size: 12px; color: #94a3b8; margin-top: 1px; }
+
+  #progress-labels { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; color: #94a3b8; }
+  #progress-track { background: rgba(255,255,255,0.1); border-radius: 99px; height: 8px; overflow: hidden; margin-bottom: 14px; }
+  #progress-bar { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #34d399, #818cf8); transition: width 0.4s ease; }
+
+  #filters { display: flex; gap: 8px; flex-wrap: wrap; }
+  #busca {
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; padding: 6px 12px; color: #f1f5f9; font-size: 13px;
+    outline: none; flex: 1 1 160px; min-width: 140px;
+  }
+  .filtro-btn {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; padding: 6px 14px; color: #94a3b8;
+    font-size: 13px; cursor: pointer; font-weight: 400; transition: all 0.15s;
+  }
+  .filtro-btn.ativo {
+    background: rgba(129,140,248,0.25); border-color: #818cf8; color: #a5b4fc; font-weight: 600;
+  }
+  select {
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; padding: 6px 10px; color: #e2e8f0; font-size: 13px;
+    outline: none; cursor: pointer;
+  }
+  select option { background: #1e1b4b; color: #e2e8f0; }
+
+  #lista { max-width: 900px; margin: 0 auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 6px; }
+
+  .card {
+    display: grid; grid-template-columns: 36px 1fr auto;
+    align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 12px; cursor: pointer;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);
+    transition: all 0.15s; user-select: none;
+  }
+  .card:hover { background: rgba(255,255,255,0.07); }
+  .card.capturado { background: rgba(52,211,153,0.07); border-color: rgba(52,211,153,0.2); opacity: 0.75; }
+  .card.flash-cap { background: rgba(52,211,153,0.18) !important; transform: scale(1.01); }
+  .card.flash-desc { background: rgba(248,113,113,0.15) !important; transform: scale(1.01); }
+
+  .checkbox {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; transition: all 0.2s; flex-shrink: 0; color: #0f172a; font-weight: 700;
+  }
+  .checkbox.checked { background: #34d399; border-color: #34d399; }
+
+  .nome { font-weight: 700; font-size: 15px; color: #f1f5f9; }
+  .nome.capturado { color: #6ee7b7; text-decoration: line-through; }
+  .info-row { display: flex; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
+  .info-label { color: #64748b; }
+  .info-val { font-size: 12px; color: #94a3b8; }
+  .dz { font-size: 11px; color: #475569; margin-top: 2px; }
+
+  .dif-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+  .dif-Fácil   { background: #d1fae5; color: #065f46; }
+  .dif-Médio   { background: #fef3c7; color: #92400e; }
+  .dif-Difícil { background: #fee2e2; color: #991b1b; }
+
+  .status-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 99px; white-space: nowrap; flex-shrink: 0; }
+  .status-cap  { background: rgba(52,211,153,0.15); color: #34d399; }
+  .status-falt { background: rgba(248,113,113,0.12); color: #f87171; }
+
+  #vazio { text-align: center; padding: 60px; color: #475569; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-inner">
+    <div id="title-row">
+      <span>🏆</span>
+      <div>
+        <div id="title-main">Joey Quest</div>
+        <div id="title-sub">Pokédex Tracker · PokeXGames</div>
+      </div>
+    </div>
+    <div id="progress-labels">
+      <span id="lbl-cap"></span>
+      <span id="lbl-falt"></span>
+      <span id="lbl-pct"></span>
+    </div>
+    <div id="progress-track"><div id="progress-bar" style="width:0%"></div></div>
+    <div id="filters">
+      <input id="busca" placeholder="🔍 Buscar pokémon ou clã..." oninput="renderLista()"/>
+      <button class="filtro-btn ativo" data-filtro="todos" onclick="setFiltro('todos')">Todos</button>
+      <button class="filtro-btn" data-filtro="faltando" onclick="setFiltro('faltando')">❌ Faltando</button>
+      <button class="filtro-btn" data-filtro="capturados" onclick="setFiltro('capturados')">✅ Capturados</button>
+      <select id="sel-cla" onchange="renderLista()"><option value="todos">Todos os clãs</option></select>
+      <select id="sel-dif" onchange="renderLista()">
+        <option value="todos">Todas dificuldades</option>
+        <option>Fácil</option><option>Médio</option><option>Difícil</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div id="lista"></div>
+
+<script>
+const POKEMONS_BASE = [
+  { cla: "Volcanic, Psycraft", nome: "Darmanitan", dif: "Difícil", bola: "Magu Ball, Heavy Ball", dz: "DZ Darmanitan" , media: 84 },
+  { cla: "Volcanic", nome: "Darumaka", dif: "Fácil", bola: "Magu Ball", dz: "DZ Darmanitan" , media: 76 },
+  { cla: "Volcanic", nome: "Heatmor", dif: "Difícil", bola: "Magu Ball", dz: "DZ Heatmor" , media: 39 },
+  { cla: "Seavell, Wingeon", nome: "Pelipper", dif: "Difícil", bola: "Sora Ball, Net Ball", dz: "DZ Pelipper" , media: 39 },
+  { cla: "Seavell, Wingeon", nome: "Wingull", dif: "Fácil", bola: "Sora Ball, Net Ball", dz: "DZ Pelipper" , media: 31 },
+  { cla: "Seavell", nome: "Beartic", dif: "Difícil", bola: "Sora Ball, Heavy Ball", dz: "DZ Beartic" , media: 39 },
+  { cla: "Seavell", nome: "Cubchoo", dif: "Fácil", bola: "Sora Ball", dz: "DZ Beartic" , media: 31 },
+  { cla: "Naturia, Gardestrike", nome: "Breloom", dif: "Difícil", bola: "Janguru Ball, Dusk Ball", dz: "DZ Breloom" , media: 39 },
+  { cla: "Naturia", nome: "Shroomish", dif: "Fácil", bola: "Janguru Ball", dz: "DZ Breloom" },
+  { cla: "Naturia, Raibolt", nome: "Galvantula", dif: "Difícil", bola: "Tinker Ball, Net Ball, Fast Ball", dz: "DZ Galvantula" , media: 39 },
+  { cla: "Naturia, Raibolt", nome: "Joltik", dif: "Fácil", bola: "Tinker Ball, Net Ball, Fast Ball", dz: "DZ Galvantula" , media: 31 },
+  { cla: "Naturia, Ironhard", nome: "Ferrothorn", dif: "Difícil", bola: "Tinker Ball, Janguru Ball", dz: "DZ Ferrothorn" , media: 84 },
+  { cla: "Naturia, Ironhard", nome: "Ferroseed", dif: "Fácil", bola: "Tinker Ball, Janguru Ball", dz: "DZ Ferrothorn" , media: 76 },
+  { cla: "Naturia, Orebound", nome: "Crustle", dif: "Difícil", bola: "Dusk Ball, Net Ball, Heavy Ball", dz: "DZ Crustle" , media: 39 },
+  { cla: "Naturia, Orebound", nome: "Dwebble", dif: "Fácil", bola: "Dusk Ball, Net Ball", dz: "DZ Crustle" , media: 31 },
+  { cla: "Gardestrike", nome: "Ambipom", dif: "Difícil", bola: "Yume Ball, Fast Ball", dz: "DZ Ambipom" , media: 39 },
+  { cla: "Gardestrike", nome: "Lickilicky", dif: "Difícil", bola: "Yume Ball, Heavy Ball", dz: "DZ Lickilicky" , media: 84 },
+  { cla: "Gardestrike", nome: "Gurdurr", dif: "Médio", bola: "Dusk Ball", dz: "DZ Conkeldurr" , media: 39 },
+  { cla: "Gardestrike", nome: "Timburr", dif: "Fácil", bola: "Dusk Ball", dz: "DZ Conkeldurr" , media: 31 },
+  { cla: "Orebound, Ironhard", nome: "Probopass", dif: "Difícil", bola: "Dusk Ball, Tinker Ball, Heavy Ball", dz: "DZ Probopass" , media: 39 },
+  { cla: "Orebound", nome: "Nosepass", dif: "Fácil", bola: "Dusk Ball, Heavy Ball", dz: "DZ Probopass" , media: 31 },
+  { cla: "Orebound", nome: "Hippowdon", dif: "Difícil", bola: "Magu Ball", dz: "DZ Hippowdon" , media: 84 },
+  { cla: "Orebound", nome: "Hippopotas", dif: "Fácil", bola: "Magu Ball", dz: "DZ Hippowdon" , media: 76 },
+  { cla: "Orebound", nome: "Excadrill", dif: "Difícil", bola: "Magu Ball, Tinker Ball, Heavy Ball", dz: "DZ Excadrill" , media: 84 },
+  { cla: "Orebound", nome: "Drilbur", dif: "Fácil", bola: "Magu Ball", dz: "DZ Excadrill" , media: 76 },
+  { cla: "Raibolt, Wingeon", nome: "Emolga", dif: "Difícil", bola: "Tinker Ball, Sora Ball, Fast Ball", dz: "DZ Emolga" , media: 39 },
+  { cla: "Wingeon", nome: "Haxorus", dif: "Difícil", bola: "Tale Ball, Heavy Ball", dz: "DZ Haxorus" , media: 84 },
+  { cla: "Wingeon", nome: "Fraxure", dif: "Médio", bola: "Tale Ball", dz: "DZ Haxorus" , media: 78 },
+  { cla: "Wingeon", nome: "Axew", dif: "Fácil", bola: "Tale Ball", dz: "DZ Haxorus" , media: 76 },
+  { cla: "Malefic, Ironhard", nome: "Bisharp", dif: "Difícil", bola: "Tinker Ball, Moon Ball", dz: "DZ Bisharp" , media: 39 },
+  { cla: "Malefic, Ironhard", nome: "Pawniard", dif: "Fácil", bola: "Tinker Ball, Moon Ball", dz: "DZ Bisharp" , media: 31 },
+  { cla: "Malefic", nome: "Mightyena", dif: "Difícil", bola: "Fast Ball, Moon Ball", dz: "DZ Mightyena" , media: 39 },
+  { cla: "Malefic", nome: "Poochyena", dif: "Fácil", bola: "Moon Ball", dz: "DZ Mightyena" , media: 31 },
+  { cla: "Malefic", nome: "Drapion", dif: "Difícil", bola: "Fast Ball, Moon Ball, Janguru Ball", dz: "DZ Drapion" , media: 84 },
+  { cla: "Malefic", nome: "Skorupi", dif: "Fácil", bola: "Net Ball, Janguru Ball", dz: "DZ Drapion" , media: 76 },
+];
+
+// Load saved progress
+let saved = [];
+try { saved = JSON.parse(localStorage.getItem("joey_quest_progress") || "[]"); } catch {}
+
+let pokemons = POKEMONS_BASE.map((p, i) => ({ ...p, id: i, capturado: saved.includes(i) }));
+let filtro = "todos";
+
+// Populate clã select
+const clas = [...new Set(pokemons.flatMap(p => p.cla.split(", ").map(c => c.trim())))].sort();
+const selCla = document.getElementById("sel-cla");
+clas.forEach(c => { const o = document.createElement("option"); o.value = c; o.textContent = c; selCla.appendChild(o); });
+
+function saveProgress() {
+  const ids = pokemons.filter(p => p.capturado).map(p => p.id);
+  localStorage.setItem("joey_quest_progress", JSON.stringify(ids));
+}
+
+function setFiltro(f) {
+  filtro = f;
+  document.querySelectorAll(".filtro-btn").forEach(b => {
+    b.classList.toggle("ativo", b.dataset.filtro === f);
+  });
+  renderLista();
+}
+
+function toggle(id) {
+  const p = pokemons.find(p => p.id === id);
+  p.capturado = !p.capturado;
+  saveProgress();
+  updateProgress();
+  renderLista();
+
+  // Flash effect
+  setTimeout(() => {
+    const card = document.querySelector(`[data-id="${id}"]`);
+    if (card) {
+      const cls = p.capturado ? "flash-cap" : "flash-desc";
+      card.classList.add(cls);
+      setTimeout(() => card.classList.remove(cls), 600);
+    }
+  }, 0);
+}
+
+function updateProgress() {
+  const total = pokemons.length;
+  const cap = pokemons.filter(p => p.capturado).length;
+  const falt = total - cap;
+  const pct = Math.round((cap / total) * 100);
+  document.getElementById("lbl-cap").innerHTML = `<b style="color:#34d399">${cap}</b> capturados`;
+  document.getElementById("lbl-falt").innerHTML = `<b style="color:#f87171">${falt}</b> faltando`;
+  document.getElementById("lbl-pct").innerHTML = `<b style="color:#a78bfa">${pct}%</b> completo`;
+  document.getElementById("progress-bar").style.width = pct + "%";
+
+  // Update button labels
+  document.querySelector("[data-filtro='todos']").textContent = `Todos (${total})`;
+  document.querySelector("[data-filtro='faltando']").textContent = `❌ Faltando (${falt})`;
+  document.querySelector("[data-filtro='capturados']").textContent = `✅ Capturados (${cap})`;
+}
+
+function renderLista() {
+  const busca = document.getElementById("busca").value.toLowerCase();
+  const claFiltro = document.getElementById("sel-cla").value;
+  const difFiltro = document.getElementById("sel-dif").value;
+
+  const lista = pokemons.filter(p => {
+    if (filtro === "faltando" && p.capturado) return false;
+    if (filtro === "capturados" && !p.capturado) return false;
+    if (busca && !p.nome.toLowerCase().includes(busca) && !p.cla.toLowerCase().includes(busca)) return false;
+    if (claFiltro !== "todos" && !p.cla.includes(claFiltro)) return false;
+    if (difFiltro !== "todos" && p.dif !== difFiltro) return false;
+    return true;
+  });
+
+  const container = document.getElementById("lista");
+
+  if (lista.length === 0) {
+    container.innerHTML = `<div id="vazio">Nenhum pokémon encontrado com esses filtros.</div>`;
+    return;
+  }
+
+  container.innerHTML = lista.map(p => `
+    <div class="card ${p.capturado ? 'capturado' : ''}" data-id="${p.id}" onclick="toggle(${p.id})">
+      <div class="checkbox ${p.capturado ? 'checked' : ''}">${p.capturado ? '✓' : ''}</div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span class="nome ${p.capturado ? 'capturado' : ''}">${p.nome}</span>
+          <span class="dif-badge dif-${p.dif}">${p.dif}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-val"><span class="info-label">Clã:</span> ${p.cla}</span>
+          <span class="info-val"><span class="info-label">Bola:</span> ${p.bola}</span>
+          ${p.media ? `<span class="info-val"><span class="info-label">Média:</span> ~${p.media} balls</span>` : ''}
+        </div>
+        <div class="dz">${p.dz}</div>
+      </div>
+      <div class="status-badge ${p.capturado ? 'status-cap' : 'status-falt'}">
+        ${p.capturado ? '✅ Capturado' : '❌ Faltando'}
+      </div>
+    </div>
+  `).join("");
+}
+
+updateProgress();
+renderLista();
+</script>
+</body>
+</html>
